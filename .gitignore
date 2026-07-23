@@ -1,3 +1,50 @@
+# --- Secrets / environment ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Virtual environments ---
+venv/
+.venv/
+env/
+ENV/
+
+# --- Testing / coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Type checkers / linters ---
+.mypy_cache/
+.ruff_cache/
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
+
+# --- Node (for mcp_server/ subfolder, since jmdurant/gbp-mcp-server is TypeScript) ---
+mcp_server/node_modules/
+mcp_server/build/
+mcp_server/*.log
+
+# --- Logs ---
+*.log
 venv/
 __pycache__/
 *.pyc
