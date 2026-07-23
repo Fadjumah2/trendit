@@ -1,0 +1,49 @@
+{
+  "common": {
+    "title_max_chars": 58,
+    "description_max_chars": 1500,
+    "description_ideal_max_chars": 100,
+    "forbidden_content": [
+      "phone_numbers",
+      "email_addresses",
+      "urls_in_body"
+    ],
+    "cta_enum": [
+      "BOOK",
+      "ORDER_ONLINE",
+      "BUY",
+      "LEARN_MORE",
+      "SIGN_UP",
+      "GET_OFFER",
+      "CALL_NOW"
+    ],
+    "image_requirements": {
+      "min_width_px": 720,
+      "min_height_px": 720,
+      "allowed_formats": ["jpg", "jpeg"],
+      "no_watermarks_or_logos_as_photo": true
+    },
+    "no_keyword_stuffing": true
+  },
+  "standard": {
+    "required_fields": ["title", "body", "cta"]
+  },
+  "event": {
+    "required_fields": ["title", "body", "cta", "event_start", "event_end"]
+  },
+  "offer": {
+    "required_fields": [
+      "title",
+      "body",
+      "cta",
+      "event_start",
+      "event_end",
+      "coupon_code",
+      "redemption_link_or_instructions"
+    ]
+  },
+  "alert": {
+    "required_fields": ["title", "body", "cta"],
+    "notes": "Alert subtype (e.g. COVID-19) availability varies — verify against current GBP post API before enabling in UI."
+  }
+}
