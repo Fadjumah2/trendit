@@ -1,13 +1,5 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-asyncpg==0.29.0
-httpx==0.27.2
-python-dotenv==1.0.1
-pydantic==2.9.2
-cryptography==43.0.1
-
-# Google ADK — agent orchestration on top of Gemini
-google-adk
-
-# MCP client support (used by ADK's McpToolset to talk to the forked server)
-mcp
+beautifulsoup4==4.12.3
+google-adk==0.3.0
+html2text==2024.2.26
+mcp[cli]==1.5.0
+requests==2.32.3
