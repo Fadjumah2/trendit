@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: trendit-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      # Existing Postgres instance — NOT managed by this blueprint, since
+      # you already have it running separately. Paste its connection
+      # string manually when prompted.
+      - key: DATABASE_URL
+        sync: false
+
+      # Not yet in Render — generate with:
+      #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: CREDENTIALS_ENCRYPTION_KEY
+        sync: false
+
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: INTERNAL_TOKEN
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+
+      - key: AGENT_MODEL
+        value: gemini-2.0-flash
+      - key: ENV
+        value: production
