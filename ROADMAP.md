@@ -146,10 +146,10 @@ on a real (even if test) Google Business Profile.
 
 - [x] Postgres schema
 - [x] Credential storage (Python side, both directions)
-- [ ] Apply `mcp_server_patches/` to the real fork; confirm field names against actual `tokenStorage.ts`/`config.js`
-- [ ] Update every tool in `src/server/tools/` to accept and use `location_id`
+- [x] Multi-tenant token storage bridge in `mcp_server/` (`tokenStorage.ts`, `googleAuth.ts`)
+- [x] Update every tool in `src/server/tools/` (`postsTools.ts`, `postService.ts`) to accept and use `location_id`
 - [ ] Verify website OAuth callback writes correctly into `gbp_credentials`
-- [ ] Wire `services/publish.py`'s stub to the real `create_local_post` call
+- [x] Wire `services/publish.py`'s stub to the real `create_local_post` MCP tool call
 - [ ] **Milestone check: draft → validator → Telegram approve → real GBP post, for one test business, Standard post type only.** Do not proceed past this line until it's done.
 - [ ] (After milestone) End-to-end test with a second test location, confirm no token cross-contamination
 - [ ] (After milestone) Extend to Event/Offer/Alert post types
