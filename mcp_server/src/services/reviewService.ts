@@ -25,9 +25,19 @@ import type {
     GoogleReviewShort
 } from '../types/index.js';
 
+interface CachedStats {
+    stats: GoogleReviewDayStat[];
+    expiry: number;
+}
+
 export class ReviewService implements IReviewService {
     private apiClient: GoogleMyBusinessApiClient;
     
+    // ⚡ Bolt Cache: A multi-tenant memory store for calculated review stats
+    // Keyed by locationName to isolate tenants. Configured with a 5-minute TTL.
+    private statsCache = new Map<string, CachedStats>();
+    private readonly CACHE_TTL_MS = 300000; // 5 minutes (300,000 milliseconds)
+
     constructor(private authService: GoogleAuthService) {
         this.apiClient = new GoogleMyBusinessApiClient(authService);
     }
@@ -188,6 +198,16 @@ export class ReviewService implements IReviewService {
     }
     
     async getReviewStats(locationName: string): Promise<ServiceResponse<GoogleReviewDayStat[]>> {
+        // ⚡ Bolt Cache: Check if we have valid, unexpired stats cached for this specific location
+        const cached = this.statsCache.get(locationName);
+        if (cached && cached.expiry > Date.now()) {
+            logger.info(`⚡ Bolt Cache: Serving review statistics from cache for ${locationName}`);
+            return {
+                success: true,
+                data: cached.stats
+            };
+        }
+
         const allReviews: GoogleReviewShort[] = [];
         
         // Fetch all reviews with pagination
@@ -274,6 +294,12 @@ export class ReviewService implements IReviewService {
         
         logger.info(`Generated stats for ${dayStats.length} days from ${allReviews.length} reviews`);
         
+        // ⚡ Bolt Cache: Store calculated stats in the multi-tenant TTL cache
+        this.statsCache.set(locationName, {
+            stats: dayStats,
+            expiry: Date.now() + this.CACHE_TTL_MS
+        });
+
         return {
             success: true,
             data: dayStats
@@ -334,6 +360,9 @@ export class ReviewService implements IReviewService {
             
             logger.info(`✅ Reply posted successfully to review ${reviewId}`);
             
+            // ⚡ Bolt Cache: Invalidate stats cache since a reply has changed and we need accurate aggregates
+            this.statsCache.delete(locationName);
+
             return {
                 success: true,
                 data: {
@@ -365,6 +394,10 @@ export class ReviewService implements IReviewService {
             const reviewPath = buildReviewPath(fullLocationPath, reviewId);
             await this.apiClient.delete(locationId, `${reviewPath}/reply`);
             logger.info(`✅ Reply deleted on review ${reviewId}`);
+
+            // ⚡ Bolt Cache: Invalidate stats cache since a reply change has occurred
+            this.statsCache.delete(locationName);
+
             return { success: true, data: { success: true } };
         } catch (error: any) {
             logger.error('Error deleting reply:', error);
