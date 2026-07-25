@@ -103,9 +103,15 @@ reviewText: string, starRating: number, businessName: string, options: {
                     confidence = calculateResponseConfidence(reviewText, starRating, replyText);
                 }
             } else {
-                logger.info('No AI sampling available, using template response');
-                replyText = await requestSampling(prompt, extra.sendRequest);
-                confidence = 0.9; // High confidence for AI-generated replies
+                logger.info('No AI sampling available, trying to request sampling from client');
+                try {
+                    replyText = await requestSampling(prompt, extra.sendRequest);
+                    confidence = 0.9; // High confidence for AI-generated replies
+                } catch (samplingError) {
+                    logger.warn('Client LLM sampling failed, falling back to template', { error: samplingError });
+                    replyText = generateTemplateResponse(reviewText, starRating, businessName, replyTone);
+                    confidence = calculateResponseConfidence(reviewText, starRating, replyText);
+                }
             }
             
             logger.info('Reply generated successfully', { sentiment, confidence, method: this.samplingCallback ? 'AI' : 'template' });

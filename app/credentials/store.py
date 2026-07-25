@@ -77,6 +77,34 @@ async def get_credentials(customer_id: str, location_id: str) -> GbpCredentials 
     )
 
 
+async def get_credentials_by_location(location_id: str) -> GbpCredentials | None:
+    """Look up + decrypt tokens for one location. Called by the MCP
+    server before every GBP API call it makes on that customer's behalf.
+    Highly optimized using the location_id unique index."""
+    pool = get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT customer_id, location_id, account_id, access_token,
+               refresh_token, token_expires_at, scopes
+        FROM gbp_credentials
+        WHERE location_id = $1
+        """,
+        location_id,
+    )
+    if row is None:
+        return None
+
+    return GbpCredentials(
+        customer_id=str(row["customer_id"]),
+        location_id=row["location_id"],
+        account_id=row["account_id"],
+        access_token=_decrypt(row["access_token"]),
+        refresh_token=_decrypt(row["refresh_token"]),
+        token_expires_at=row["token_expires_at"],
+        scopes=row["scopes"],
+    )
+
+
 async def save_credentials(
     customer_id: str,
     location_id: str,
@@ -114,11 +142,49 @@ async def save_credentials(
     )
 
 
+async def update_refreshed_credentials(
+    location_id: str,
+    access_token: str,
+    refresh_token: str,
+    token_expires_at: datetime,
+    scopes: str | None = None,
+) -> bool:
+    """Updates refreshed tokens for a given location_id. Returns True if updated, False if not found.
+    Extends the FastAPI backend with the capability to persist refreshed tokens from Node MCP process."""
+    pool = get_pool()
+    result = await pool.execute(
+        """
+        UPDATE gbp_credentials
+        SET access_token = $2,
+            refresh_token = $3,
+            token_expires_at = $4,
+            scopes = COALESCE($5, scopes),
+            updated_at = now()
+        WHERE location_id = $1
+        """,
+        location_id,
+        _encrypt(access_token),
+        _encrypt(refresh_token),
+        token_expires_at,
+        scopes,
+    )
+    return result != "UPDATE 0"
+
+
 async def delete_credentials(customer_id: str, location_id: str) -> None:
     """Used if a customer disconnects their GBP profile."""
     pool = get_pool()
     await pool.execute(
         "DELETE FROM gbp_credentials WHERE customer_id = $1 AND location_id = $2",
         customer_id,
+        location_id,
+    )
+
+
+async def delete_credentials_by_location(location_id: str) -> None:
+    """Used if a customer disconnects their GBP profile by location_id."""
+    pool = get_pool()
+    await pool.execute(
+        "DELETE FROM gbp_credentials WHERE location_id = $1",
         location_id,
     )
