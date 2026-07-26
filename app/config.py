@@ -19,11 +19,11 @@ class Settings:
     # generate one and add it before save_credentials()/get_credentials()
     # in app/credentials/store.py will work:
     #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-    CREDENTIALS_ENCRYPTION_KEY: str = os.environ["CREDENTIALS_ENCRYPTION_KEY"]
+    CREDENTIALS_ENCRYPTION_KEY: str = os.environ["CREDENTIALS_ENCRYPTION_KEY"].strip()
 
     # Telegram
-    TELEGRAM_BOT_TOKEN: str = os.environ["TELEGRAM_TOKEN"]
-    TELEGRAM_WEBHOOK_SECRET: str = os.environ.get("WEBHOOK_SECRET", "")
+    TELEGRAM_BOT_TOKEN: str = os.environ["TELEGRAM_TOKEN"].strip()
+    TELEGRAM_WEBHOOK_SECRET: str = os.environ.get("WEBHOOK_SECRET", "").strip()
     TELEGRAM_API_BASE: str = "https://api.telegram.org"
 
     # Google OAuth app identity — shared across every customer's consent flow.
