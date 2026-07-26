@@ -29,3 +29,16 @@ app.include_router(approval_router)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/debug/db")
+async def debug_db():
+    from app.db import _pool, get_pool
+    if _pool is None:
+        return {"pool_initialized": False}
+    try:
+        pool = get_pool()
+        res = await pool.fetchval("SELECT 1")
+        return {"pool_initialized": True, "query_success": res == 1}
+    except Exception as e:
+        return {"pool_initialized": True, "query_error": str(e)}
