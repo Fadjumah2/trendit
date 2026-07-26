@@ -40,18 +40,24 @@ async def debug_db():
         pool = get_pool()
         res = await pool.fetchval("SELECT 1")
         
-        # Check if table exists
-        table_exists = await pool.fetchval("""
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'gbp_credentials'
-            );
+        # Check tables and counts
+        tables = await pool.fetch("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
         """)
         
+        counts = {}
+        for t in tables:
+            name = t["table_name"]
+            count = await pool.fetchval(f"SELECT COUNT(*) FROM {name}")
+            counts[name] = count
+            
         return {
             "pool_initialized": True, 
             "query_success": res == 1,
-            "table_gbp_credentials_exists": table_exists
+            "tables": [t["table_name"] for t in tables],
+            "row_counts": counts
         }
     except Exception as e:
         return {"pool_initialized": True, "query_error": str(e)}
