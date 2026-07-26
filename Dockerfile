@@ -20,7 +20,7 @@ COPY migrations ./migrations
 
 # --- Forked MCP server (Node/TypeScript) ---
 COPY mcp_server ./mcp_server
-RUN cd mcp_server && npm install && npm run build
+RUN cd mcp_server && npm install --include=dev && npm run build
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=.

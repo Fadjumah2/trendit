@@ -103,9 +103,15 @@ reviewText: string, starRating: number, businessName: string, options: {
                     confidence = calculateResponseConfidence(reviewText, starRating, replyText);
                 }
             } else {
-                logger.info('No AI sampling available, using template response');
-                replyText = await requestSampling(prompt, extra.sendRequest);
-                confidence = 0.9; // High confidence for AI-generated replies
+                try {
+                    logger.info('No local sampling callback, attempting AI sampling via MCP extra.sendRequest');
+                    replyText = await requestSampling(prompt, extra.sendRequest);
+                    confidence = 0.9; // High confidence for AI-generated replies
+                } catch (samplingError) {
+                    logger.warn('AI sampling via MCP extra.sendRequest failed or not implemented, falling back to template response', { error: samplingError });
+                    replyText = generateTemplateResponse(reviewText, starRating, businessName, replyTone);
+                    confidence = calculateResponseConfidence(reviewText, starRating, replyText);
+                }
             }
             
             logger.info('Reply generated successfully', { sentiment, confidence, method: this.samplingCallback ? 'AI' : 'template' });
