@@ -23,7 +23,17 @@ from cryptography.fernet import Fernet
 from app.config import settings
 from app.db import get_pool
 
-_fernet = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY.encode())
+_fernet: Fernet | None = None
+
+
+def _get_fernet() -> Fernet:
+    global _fernet
+    if _fernet is None:
+        key = settings.CREDENTIALS_ENCRYPTION_KEY
+        if not key or key == "MISSING":
+            raise ValueError("CREDENTIALS_ENCRYPTION_KEY environment variable is missing or not configured!")
+        _fernet = Fernet(key.encode())
+    return _fernet
 
 
 @dataclass
@@ -42,11 +52,11 @@ class GbpCredentials:
 
 
 def _encrypt(value: str) -> str:
-    return _fernet.encrypt(value.encode()).decode()
+    return _get_fernet().encrypt(value.encode()).decode()
 
 
 def _decrypt(value: str) -> str:
-    return _fernet.decrypt(value.encode()).decode()
+    return _get_fernet().decrypt(value.encode()).decode()
 
 
 async def get_credentials(customer_id: str, location_id: str) -> GbpCredentials | None:

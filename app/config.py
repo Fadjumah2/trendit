@@ -13,16 +13,19 @@ load_dotenv()
 
 class Settings:
     # Database
-    DATABASE_URL: str = os.environ["DATABASE_URL"]
+    DATABASE_URL: str = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres")
 
     # Credential encryption (Fernet key). NOT yet in your Render env vars —
     # generate one and add it before save_credentials()/get_credentials()
     # in app/credentials/store.py will work:
     #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-    CREDENTIALS_ENCRYPTION_KEY: str = os.environ["CREDENTIALS_ENCRYPTION_KEY"]
+    CREDENTIALS_ENCRYPTION_KEY: str = os.environ.get(
+        "CREDENTIALS_ENCRYPTION_KEY",
+        "MISSING"
+    )
 
     # Telegram
-    TELEGRAM_BOT_TOKEN: str = os.environ["TELEGRAM_TOKEN"]
+    TELEGRAM_BOT_TOKEN: str = os.environ.get("TELEGRAM_TOKEN", "dummy_token_for_startup")
     TELEGRAM_WEBHOOK_SECRET: str = os.environ.get("WEBHOOK_SECRET", "")
     TELEGRAM_API_BASE: str = "https://api.telegram.org"
 
