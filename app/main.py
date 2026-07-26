@@ -39,6 +39,19 @@ async def debug_db():
     try:
         pool = get_pool()
         res = await pool.fetchval("SELECT 1")
-        return {"pool_initialized": True, "query_success": res == 1}
+        
+        # Check if table exists
+        table_exists = await pool.fetchval("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'gbp_credentials'
+            );
+        """)
+        
+        return {
+            "pool_initialized": True, 
+            "query_success": res == 1,
+            "table_gbp_credentials_exists": table_exists
+        }
     except Exception as e:
         return {"pool_initialized": True, "query_error": str(e)}
