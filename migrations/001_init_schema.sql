@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS post_history (
 CREATE INDEX IF NOT EXISTS idx_post_history_customer ON post_history(customer_id);
 CREATE INDEX IF NOT EXISTS idx_post_history_status ON post_history(owner_decision);
 CREATE INDEX IF NOT EXISTS idx_post_history_created ON post_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_post_history_query_opt ON post_history(customer_id, location_id, owner_decision, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_post_history_pending_opt ON post_history(customer_id, owner_decision, created_at DESC);
 
 -- ---------------------------------------------------------------------------
 -- updated_at auto-touch trigger (shared across tables that track it)
