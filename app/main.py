@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.db import init_pool, close_pool
 from app.telegram.webhook import router as telegram_router
 from app.internal import router as internal_router
+from app.routes.approval import router as approval_router
 
 
 @asynccontextmanager
@@ -18,10 +19,11 @@ async def lifespan(app: FastAPI):
     await close_pool()
 
 
-app = FastAPI(title="GBP AI Agent Backend", lifespan=lifespan)
+app = FastAPI(title="Trendit", lifespan=lifespan)
 
 app.include_router(telegram_router)
 app.include_router(internal_router)
+app.include_router(approval_router)
 
 
 @app.get("/health")

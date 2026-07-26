@@ -51,6 +51,10 @@ class Settings:
     GOOGLE_API_KEY: str = os.environ.get("GOOGLE_API_KEY", "")
     GEMINI_MODEL: str = os.environ.get("AGENT_MODEL", "gemini-2.0-flash")
 
+    # Email (Resend)
+    RESEND_API_KEY: str = os.environ.get("RESEND_API_KEY", "")
+    EMAIL_FROM: str = os.environ.get("EMAIL_FROM", "Trendit <notifications@forms.trendexhub.com>")
+
     ENV: str = os.environ.get("ENV", "development")
 
 

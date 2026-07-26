@@ -15,8 +15,9 @@ An AI agent (built on Google's ADK, orchestrating Gemini) that manages a
 small business's Google Business Profile — starting with automated post
 drafting (Standard/Event/Offer/Alert), expanding feature-by-feature later.
 v1 scope: single-location businesses, posts only. Interaction happens via
-Telegram. Full product context lives in `gbp-ai-agent-plan.md` in this
-project — read that for the "why," this file is the "how, precisely."
+Email (primary) and Telegram (parallel). Full product context lives in
+`gbp-ai-agent-plan.md` in this project — read that for the "why," this file
+is the "how, precisely."
 
 ### 🎯 The first goal — nothing else matters until this works
 
@@ -24,14 +25,14 @@ Once a business owner connects their GBP profile, the **very first thing
 that must work end-to-end**, before any other feature, polish, or phase
 gets attention, is this single loop:
 
-> **Generate an AI draft post → owner approves it via Telegram → it
+> **Generate an AI draft post → owner approves it via Email → it
 > publishes to their real Google Business Profile.**
 
 That's it. Not reviews, not Q&A, not multiple post types perfected, not a
 polished onboarding form. One post type (Standard is simplest — pick that
-first), one path through: agent drafts it → validator checks it → Telegram
-sends it with Approve/Edit/Skip buttons → tapping Approve calls
-`create_local_post` on the real forked MCP server → the post actually
+first), one path through: agent drafts it → validator checks it → Email
+sends it with styled Approve/Reject links → clicking Approve calls
+`mark_approved` and `publish_post` → the post actually
 appears on the business's live GBP listing.
 
 Every task, PR, or prompt to a coding agent should be evaluated against one
@@ -126,8 +127,10 @@ follow these:
 | Policy rules config + deterministic validator | ✅ Built (`app/agent/policy_rules.json`, `app/validator/validator.py`) |
 | Content profile service | ✅ Built (`app/agent/content_profile.py`) — read/write only; nothing populates it yet (Phase 2) |
 | ADK agent + McpToolset wiring | ⚠️ Scaffolded (`app/agent/agent.py`) — needs verification against current `google-adk` docs; not yet tested against a live MCP server |
-| Telegram webhook, templates, linking flow | ✅ Built (`app/telegram/`) — not yet tested end-to-end against a real bot |
+| Telegram webhook, templates, linking flow | ✅ Built (app/telegram/) — not yet tested end-to-end against a real bot |
+| Email approval client, templates, routes | ✅ Built (app/email/, app/routes/approval.py) — using Resend |
 | post_history service + publish step | ⚠️ `services/post_history.py` built; `services/publish.py` is a **stub** — the actual MCP `create_local_post` call isn't wired in yet |
+
 | Forked MCP server (`mcp_server/`) | 🚧 In progress — `googleAuth.ts`/`tokenStorage.ts` patches drafted in `mcp_server_patches/`, not yet confirmed against the real files or applied. Tool files in `src/server/tools/` not yet updated to accept `location_id`. |
 | Website OAuth callback → `gbp_credentials` | ❓ Not yet confirmed working end-to-end from this side |
 | Onboarding intake form / niche template library | ❌ Not started (Phase 2) |
@@ -139,7 +142,7 @@ follow these:
 
 ### Phase 1 — Backend Core + THE FIRST GOAL (current focus)
 Everything here exists in service of one milestone: **one real business,
-one Standard post, drafted by the agent, approved in Telegram, published
+one Standard post, drafted by the agent, approved in Email, published
 live to their GBP.** Don't move to Phase 2 until this has actually happened
 at least once — not "the code paths all exist," but a real post appearing
 on a real (even if test) Google Business Profile.
@@ -150,7 +153,7 @@ on a real (even if test) Google Business Profile.
 - [x] Update every tool in `src/server/tools/` (`postsTools.ts`, `postService.ts`) to accept and use `location_id`
 - [ ] Verify website OAuth callback writes correctly into `gbp_credentials`
 - [x] Wire `services/publish.py`'s stub to the real `create_local_post` MCP tool call
-- [ ] **Milestone check: draft → validator → Telegram approve → real GBP post, for one test business, Standard post type only.** Do not proceed past this line until it's done.
+- [ ] **Milestone check: draft → validator → Email approve → real GBP post, for one test business, Standard post type only.** Do not proceed past this line until it's done.
 - [ ] (After milestone) End-to-end test with a second test location, confirm no token cross-contamination
 - [ ] (After milestone) Extend to Event/Offer/Alert post types
 
@@ -199,16 +202,19 @@ backend/
 ├── app/
 │   ├── config.py                   # all env vars, real Render names — read this before assuming a var name
 │   ├── db.py                       # asyncpg pool
-│   ├── main.py                     # FastAPI entrypoint
+│   ├── main.py                     # FastAPI entrypoint, renamed to Trendit
 │   ├── internal.py                 # Node↔Python credential bridge, INTERNAL_TOKEN-gated
 │   ├── credentials/store.py        # Postgres-backed OAuth token storage, encrypted at rest (Fernet)
 │   ├── agent/agent.py              # ADK LlmAgent + McpToolset, tool_filter = 4 Local Posts tools only
 │   ├── agent/content_profile.py    # business_content_profile read/write, few-shot post retrieval
 │   ├── agent/policy_rules.json     # distilled GBP post policy, sliced per post type
 │   ├── validator/validator.py      # deterministic checks — the safety net before publish
-│   ├── telegram/                   # client, templates, linking, webhook — all Telegram specifics live here
+│   ├── telegram/                   # client, templates, linking, webhook — Telegram parallel frontend
+│   ├── email/                      # client, templates — Email primary frontend (Resend)
+│   ├── routes/                     # approval.py — email-based approval/rejection endpoints
 │   └── services/
 │       ├── post_history.py         # draft/approve/edit/skip state machine
+│       ├── notify.py               # email notification dispatcher
 │       └── publish.py              # STUB — final MCP create_local_post call, not yet wired
 ```
 
