@@ -17,7 +17,7 @@ def draft_preview_email(post_id: str, post_type: str, draft_content: dict, backe
     approve_url = f"{backend_url}/approve/{post_id}"
     reject_url = f"{backend_url}/reject/{post_id}"
     
-    html_body = f\"\"\"
+    html_body = f"""
     <html>
     <body>
         <h2>New {post_type.capitalize()} Post Draft</h2>
@@ -32,12 +32,12 @@ def draft_preview_email(post_id: str, post_type: str, draft_content: dict, backe
         </p>
     </body>
     </html>
-    \"\"\"
+    """
     return subject, html_body
 
 def decision_result_page(message: str) -> str:
     safe_message = html.escape(message)
-    return f\"\"\"
+    return f"""
     <html>
     <head><title>Trendit Approval</title></head>
     <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
@@ -45,4 +45,4 @@ def decision_result_page(message: str) -> str:
         <p><a href="https://forms.trendexhub.com">Return to Dashboard</a></p>
     </body>
     </html>
-    \"\"\"
+    """

@@ -11,7 +11,7 @@ from app.telegram import templates as tg_templates
 async def send_draft_for_approval(post_id: str) -> None:
     pool = get_pool()
     row = await pool.fetchrow(
-        \"\"\"
+        """
         SELECT 
             ph.post_type, 
             ph.draft_content, 
@@ -21,7 +21,7 @@ async def send_draft_for_approval(post_id: str) -> None:
         JOIN customers c ON ph.customer_id = c.customer_id
         LEFT JOIN telegram_chat_links tcl ON c.customer_id = tcl.customer_id
         WHERE ph.id = $1
-        \"\"\",
+        """,
         post_id,
     )
     
