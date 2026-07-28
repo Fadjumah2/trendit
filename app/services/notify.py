@@ -59,3 +59,29 @@ async def send_draft_for_approval(post_id: str) -> None:
             text=tg_text,
             reply_markup=tg_markup
         )
+
+async def send_connection_confirmation(customer_id: str, location_id: str) -> None:
+    pool = get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT c.email, c.business_name, tcl.chat_id
+        FROM customers c
+        LEFT JOIN telegram_chat_links tcl ON c.customer_id = tcl.customer_id
+        WHERE c.customer_id = $1
+        """,
+        customer_id,
+    )
+    if row is None:
+        return
+
+    subject, html_body = email_templates.connection_confirmed_email(
+        business_name=row["business_name"] or "your business",
+        location_id=location_id,
+    )
+    await email_client.send_email(to=row["email"], subject=subject, html=html_body)
+
+    if row["chat_id"]:
+        await tg_client.send_message(
+            chat_id=row["chat_id"],
+            text=tg_templates.connection_confirmed(location_id),
+        )

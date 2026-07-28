@@ -61,6 +61,14 @@ def linking_invalid_code() -> str:
     return "That code doesn't match an active link request. Please check the website and try again."
 
 
+def connection_confirmed(location_id: str) -> str:
+    return (
+        f"✅ Your Google Business Profile is connected!\n\n"
+        f"I'll start sending you post drafts for approval here. You'll get your first one soon.\n\n"
+        f"<i>Location ID: {location_id}</i>"
+    )
+
+
 def _escape(text: str) -> str:
     """Minimal HTML escaping for Telegram's HTML parse_mode."""
     return (

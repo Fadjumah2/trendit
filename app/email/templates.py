@@ -35,6 +35,21 @@ def draft_preview_email(post_id: str, post_type: str, draft_content: dict, backe
     """
     return subject, html_body
 
+def connection_confirmed_email(business_name: str, location_id: str) -> tuple[str, str]:
+    subject = "Google Business Profile Connected"
+    html_body = f"""
+    <html>
+    <body>
+        <h2>Account Connected!</h2>
+        <p>Your Google Business Profile for <b>{html.escape(business_name)}</b> is now connected to Trendit.</p>
+        <p>We'll start generating your first post draft soon. Stay tuned!</p>
+        <br>
+        <p><i>Location ID: {html.escape(location_id)}</i></p>
+    </body>
+    </html>
+    """
+    return subject, html_body
+
 def decision_result_page(message: str) -> str:
     safe_message = html.escape(message)
     return f"""
