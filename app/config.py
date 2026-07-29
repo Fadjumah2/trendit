@@ -1,49 +1,37 @@
 """
 Central config. Everything reads env vars from here rather than
 scattering os.getenv() calls through the codebase.
-
-Variable names below match what's actually already set in Render
-(see conversation) rather than the earlier placeholder names.
 """
 import os
 from dotenv import load_dotenv
 
+# Load from the parent directory if running from app/ or similar
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv()
 
 
 class Settings:
     # Database
-    DATABASE_URL: str = os.environ["DATABASE_URL"]
+    DATABASE_URL: str = os.environ.get("DATABASE_URL", "postgresql://localhost/trendit")
 
-    # Credential encryption (Fernet key). NOT yet in your Render env vars —
-    # generate one and add it before save_credentials()/get_credentials()
-    # in app/credentials/store.py will work:
-    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-    CREDENTIALS_ENCRYPTION_KEY: str = os.environ["CREDENTIALS_ENCRYPTION_KEY"].strip()
+    # Credential encryption (Fernet key).
+    # If missing, we use a dummy key for local testing to prevent crashes.
+    # Production MUST set this.
+    CREDENTIALS_ENCRYPTION_KEY: str = os.environ.get(
+        "CREDENTIALS_ENCRYPTION_KEY", 
+        "v-n9yH0v7O3L5Y-P8Q9R-S-T-U-V-W-X-Y-Z-0-1-2-3-4=" 
+    ).strip()
 
     # Telegram
-    TELEGRAM_BOT_TOKEN: str = os.environ["TELEGRAM_TOKEN"].strip()
+    TELEGRAM_BOT_TOKEN: str = os.environ.get("TELEGRAM_TOKEN", "").strip()
     TELEGRAM_WEBHOOK_SECRET: str = os.environ.get("WEBHOOK_SECRET", "").strip()
     TELEGRAM_API_BASE: str = "https://api.telegram.org"
 
-    # Google OAuth app identity — shared across every customer's consent flow.
-    # Used by the website's OAuth callback to exchange each customer's own
-    # authorization code for THEIR OWN access/refresh token pair, which then
-    # gets written to gbp_credentials (per customer_id/location_id).
+    # Google OAuth
     GOOGLE_CLIENT_ID: str = os.environ.get("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET: str = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
-    # DEV-ONLY: your own personal GBP refresh token from OAuth Playground.
-    # This lets you call MCP tools against your own test business without
-    # running the full website OAuth flow. NEVER read this for a real
-    # customer's request — production credential lookups always go through
-    # gbp_credentials via app/credentials/store.py, keyed by customer_id.
-    DEV_GOOGLE_REFRESH_TOKEN: str = os.environ.get("GOOGLE_REFRESH_TOKEN", "")
-
-    # Internal service-to-service auth: the forked Node MCP server calls
-    # back into this backend (e.g. GET /internal/gbp-credentials) to fetch
-    # a customer's decrypted token pair. This shared secret authenticates
-    # that call — see mcp_server/README.md, Option A.
+    # Internal service-to-service auth
     INTERNAL_TOKEN: str = os.environ.get("INTERNAL_TOKEN", "")
     BACKEND_URL: str = os.environ.get("BACKEND_URL", "http://localhost:8080")
 
@@ -53,6 +41,7 @@ class Settings:
 
     # Email (Resend)
     RESEND_API_KEY: str = os.environ.get("RESEND_API_KEY", "")
+    # Verified domain: forms.trendexhub.com
     EMAIL_FROM: str = os.environ.get("EMAIL_FROM", "Trendit <notifications@forms.trendexhub.com>")
 
     ENV: str = os.environ.get("ENV", "development")

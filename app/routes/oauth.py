@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Any
 
 from app.config import settings
 from app.db import get_pool
@@ -12,39 +13,51 @@ from app.services.onboarding import complete_onboarding_process
 router = APIRouter(prefix="/oauth", tags=["OAuth"])
 
 class CallbackBody(BaseModel):
-    code: str
+    code: str | None = None
+    access_token: str | None = None
+    refresh_token: str | None = None
+    expires_in: int | None = 3600
     email: str | None = None
     location_id: str | None = None
     business_name: str | None = None
     redirect_uri: str | None = None
+    scope: str | None = None
 
 @router.post("/callback")
 async def oauth_callback(body: CallbackBody):
-    # 1. Exchange code for tokens
-    redirect_uri = body.redirect_uri or f"{settings.BACKEND_URL}/auth/callback"
+    access_token = body.access_token
+    refresh_token = body.refresh_token
+    expires_in = body.expires_in
+    scope = body.scope
     
     async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://oauth2.googleapis.com/token",
-            data={
-                "code": body.code,
-                "client_id": settings.GOOGLE_CLIENT_ID,
-                "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "redirect_uri": redirect_uri,
-                "grant_type": "authorization_code",
-            },
-        )
-    
-        if resp.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Google token exchange failed: {resp.text}")
-
-        tokens = resp.json()
-        access_token = tokens["access_token"]
-        refresh_token = tokens.get("refresh_token")
-        if not refresh_token:
-            raise HTTPException(status_code=400, detail="No refresh_token returned — check prompt=consent&access_type=offline on the auth URL")
+        # 1. Exchange code if tokens not provided
+        if body.code and not access_token:
+            redirect_uri = body.redirect_uri or f"{settings.BACKEND_URL}/auth/callback"
+            resp = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": body.code,
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                },
+            )
         
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=tokens.get("expires_in", 3600))
+            if resp.status_code != 200:
+                raise HTTPException(status_code=400, detail=f"Google token exchange failed: {resp.text}")
+
+            tokens = resp.json()
+            access_token = tokens["access_token"]
+            refresh_token = tokens.get("refresh_token")
+            expires_in = tokens.get("expires_in", 3600)
+            scope = tokens.get("scope")
+
+        if not access_token:
+            raise HTTPException(status_code=400, detail="Missing authorization code or access token")
+            
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
         # 1b. Fetch User Info if email is missing
         email = body.email
@@ -71,7 +84,7 @@ async def oauth_callback(body: CallbackBody):
             if accounts_resp.status_code == 200:
                 accounts = accounts_resp.json().get("accounts", [])
                 if accounts:
-                    account_id = accounts[0]["name"] # e.g. "accounts/123"
+                    account_id = accounts[0]["name"]
                     # List locations
                     locations_resp = await client.get(
                         f"https://mybusinessbusinessinformation.googleapis.com/v1/{account_id}/locations?readMask=name,title",
@@ -80,10 +93,9 @@ async def oauth_callback(body: CallbackBody):
                     if locations_resp.status_code == 200:
                         locations = locations_resp.json().get("locations", [])
                         if locations:
-                            location_id = locations[0]["name"] # e.g. "locations/456"
+                            location_id = locations[0]["name"]
         
         if not location_id:
-            # Fallback for dev/test if no locations found
             location_id = "pending_location_discovery"
 
     # 2. Find-or-create the customer row
@@ -91,7 +103,7 @@ async def oauth_callback(body: CallbackBody):
     row = await pool.fetchrow(
         """
         INSERT INTO customers (email, business_name)
-        VALUES ($1, $2)
+        VALUES (, )
         ON CONFLICT (email) DO UPDATE SET 
             business_name = COALESCE(EXCLUDED.business_name, customers.business_name),
             updated_at = now()
@@ -110,7 +122,7 @@ async def oauth_callback(body: CallbackBody):
         refresh_token=refresh_token,
         token_expires_at=expires_at,
         account_id=account_id,
-        scopes=tokens.get("scope"),
+        scopes=scope,
     )
 
     # 4. Fire the confirmation
