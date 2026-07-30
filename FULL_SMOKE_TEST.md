@@ -8,7 +8,7 @@ Hand this whole document to your coding assistant, or work through it yourself i
 ## 0. Pre-flight
 
 - [ ] Confirm the latest backend deploy on Render shows **"Live"**, not "Failed" (dashboard → `trendit` service → Events tab)
-- [ ] Confirm the latest frontend deploy on Vercel shows **"Ready"** (Vercel dashboard → `trenitw-kohl` project)
+- [ ] Confirm the latest frontend deploy on Render shows **"Re
 - [ ] Have two Google accounts ready to test with:
   - **Account A** — has an existing, verified Google Business Profile
   - **Account B** — has no Business Profile at all (or use a fresh Google account)
