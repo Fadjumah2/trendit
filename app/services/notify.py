@@ -80,14 +80,25 @@ async def send_connection_confirmation(customer_id: str, location_id: str) -> No
     if row is None:
         return
 
-    subject, html_body = email_templates.connection_confirmed_email(
-        business_name=row["business_name"] or "your business",
-        location_id=location_id,
-    )
+    if location_id == "pending_location_discovery":
+        subject, html_body = email_templates.no_gbp_found_email(
+            business_name=row["business_name"] or "your business"
+        )
+    else:
+        subject, html_body = email_templates.connection_confirmed_email(
+            business_name=row["business_name"] or "your business",
+            location_id=location_id,
+        )
+    
     await email_client.send_email(to=row["email"], subject=subject, html=html_body)
 
     if row["chat_id"]:
-        await tg_client.send_message(
-            chat_id=row["chat_id"],
-            text=tg_templates.connection_confirmed(location_id),
-        )
+        if location_id == "pending_location_discovery":
+            # For Telegram, we could add a similar "No GBP" message template if needed
+            # For now, let's just skip or send a generic one
+            pass
+        else:
+            await tg_client.send_message(
+                chat_id=row["chat_id"],
+                text=tg_templates.connection_confirmed(location_id),
+            )

@@ -50,6 +50,23 @@ def connection_confirmed_email(business_name: str, location_id: str) -> tuple[st
     """
     return subject, html_body
 
+def no_gbp_found_email(business_name: str) -> tuple[str, str]:
+    subject = "Action Required: Google Business Profile Not Found"
+    html_body = f"""
+    <html>
+    <body>
+        <h2>We couldn't find your Business Profile</h2>
+        <p>Hi there,</p>
+        <p>We successfully connected to your Google account, but we couldn't find a Google Business Profile for <b>{html.escape(business_name)}</b>.</p>
+        <p>To use Trendit, you need an active Google Business Profile. You can create one for free here:</p>
+        <p><a href="https://www.google.com/business/go/" style="background-color: #4285F4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Create Google Business Profile</a></p>
+        <br>
+        <p>Once created, please return to Trendit and try connecting again.</p>
+    </body>
+    </html>
+    """
+    return subject, html_body
+
 def decision_result_page(message: str) -> str:
     safe_message = html.escape(message)
     return f"""

@@ -126,8 +126,11 @@ async def oauth_callback(body: CallbackBody):
         scopes=scope,
     )
 
-    # 4. Fire the confirmation
-    await send_connection_confirmation(customer_id, location_id)
+    # 4. Fire the confirmation (non-blocking so email failure doesn't break the flow)
+    try:
+        await send_connection_confirmation(customer_id, location_id)
+    except Exception as e:
+        print(f"ERROR: Failed to send connection confirmation email: {e}")
 
     return {"customer_id": customer_id, "status": "connected", "location_id": location_id}
 
@@ -148,13 +151,16 @@ async def onboarding_complete(body: OnboardingCompleteBody):
     # first draft so the owner gets something to approve without any
     # manual step. Wrapped so a generation hiccup doesn't fail onboarding
     # itself (the profile is already saved at this point).
-    try:
-        await generate_post_draft(
-            customer_id=body.customer_id,
-            location_id=body.location_id,
-            post_type="standard",
-        )
-    except Exception as e:
-        print(f"First draft generation failed for {body.customer_id}: {e}")
+    if body.location_id != "pending_location_discovery":
+        try:
+            await generate_post_draft(
+                customer_id=body.customer_id,
+                location_id=body.location_id,
+                post_type="standard",
+            )
+        except Exception as e:
+            print(f"First draft generation failed for {body.customer_id}: {e}")
+    else:
+        print(f"Skipping first draft generation for {body.customer_id} as location is pending discovery.")
 
     return {"status": "profile_created", "profile": profile}
