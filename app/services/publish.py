@@ -1,9 +1,9 @@
 """
 Final publish step: takes an approved post_history row and calls the MCP
 server's create_local_post tool via the MCP stdio client connection.
-This is the only place in the codebase that should ever result in a live GBP
-post being created — approval in webhook.py must happen first.
 """
+import os
+import json
 from pathlib import Path
 from mcp import ClientSession
 from mcp.client.stdio import stdio_client, StdioServerParameters
@@ -12,7 +12,6 @@ from app.db import get_pool
 from app.services.post_history import mark_published
 
 _MCP_SERVER_DIR = Path(__file__).parents[2] / "mcp_server"
-
 
 async def publish_post(post_id: str) -> dict:
     pool = get_pool()
@@ -27,10 +26,15 @@ async def publish_post(post_id: str) -> dict:
     if row is None:
         raise ValueError(f"post_history row {post_id} not found")
 
-    customer_id = str(row["customer_id"])
     location_id = row["location_id"]
     post_type = row["post_type"]
-    content = dict(row["final_content"])
+    
+    # Handle both JSON string and dict for final_content
+    content_raw = row["final_content"]
+    if isinstance(content_raw, str):
+        content = json.loads(content_raw)
+    else:
+        content = dict(content_raw)
 
     topic_type = post_type.upper() if post_type else "STANDARD"
     summary = content.get("summary") or content.get("body", "")
@@ -54,10 +58,16 @@ async def publish_post(post_id: str) -> dict:
     if "offer" in content:
         tool_args["offer"] = content["offer"]
 
+    # Pass environment variables to MCP server subprocess
+    mcp_env = os.environ.copy()
+    mcp_env["NODE_ENV"] = "development"
+    mcp_env["TRANSPORT_MODE"] = "stdio"
+
     server_params = StdioServerParameters(
         command="node",
         args=["build/index.js"],
         cwd=str(_MCP_SERVER_DIR),
+        env=mcp_env
     )
 
     async with stdio_client(server_params) as (read, write):

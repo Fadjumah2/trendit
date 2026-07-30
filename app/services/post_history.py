@@ -3,8 +3,8 @@ CRUD around post_history — every draft, its validator result, and the
 owner's decision. This is both the audit trail and the source of approved
 posts fed back as few-shot examples (see agent/content_profile.py).
 """
+import json
 from app.db import get_pool
-
 
 async def create_draft(customer_id: str, location_id: str, post_type: str, draft_content: dict) -> str:
     pool = get_pool()
@@ -17,10 +17,9 @@ async def create_draft(customer_id: str, location_id: str, post_type: str, draft
         customer_id,
         location_id,
         post_type,
-        draft_content,
+        json.dumps(draft_content),
     )
     return str(row["id"])
-
 
 async def save_validator_result(post_id: str, validator_result: dict, fixed_content: dict | None) -> None:
     pool = get_pool()
@@ -32,16 +31,15 @@ async def save_validator_result(post_id: str, validator_result: dict, fixed_cont
             WHERE id = $1
             """,
             post_id,
-            validator_result,
-            fixed_content,
+            json.dumps(validator_result),
+            json.dumps(fixed_content),
         )
     else:
         await pool.execute(
             "UPDATE post_history SET validator_result = $2::jsonb, updated_at = now() WHERE id = $1",
             post_id,
-            validator_result,
+            json.dumps(validator_result),
         )
-
 
 async def get_pending_draft_for_customer(customer_id: str) -> dict | None:
     pool = get_pool()
@@ -55,8 +53,12 @@ async def get_pending_draft_for_customer(customer_id: str) -> dict | None:
         """,
         customer_id,
     )
-    return dict(row) if row else None
-
+    if not row:
+        return None
+    data = dict(row)
+    if isinstance(data["draft_content"], str):
+        data["draft_content"] = json.loads(data["draft_content"])
+    return data
 
 async def mark_approved(post_id: str) -> None:
     pool = get_pool()
@@ -69,7 +71,6 @@ async def mark_approved(post_id: str) -> None:
         post_id,
     )
 
-
 async def mark_edited(post_id: str, edited_content: dict) -> None:
     pool = get_pool()
     await pool.execute(
@@ -79,9 +80,8 @@ async def mark_edited(post_id: str, edited_content: dict) -> None:
         WHERE id = $1
         """,
         post_id,
-        edited_content,
+        json.dumps(edited_content),
     )
-
 
 async def mark_skipped(post_id: str) -> None:
     pool = get_pool()
@@ -89,7 +89,6 @@ async def mark_skipped(post_id: str) -> None:
         "UPDATE post_history SET owner_decision = 'rejected', updated_at = now() WHERE id = $1",
         post_id,
     )
-
 
 async def mark_published(post_id: str, gbp_post_id: str) -> None:
     pool = get_pool()

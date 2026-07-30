@@ -1,6 +1,7 @@
 """
 Service for sending notifications to customers.
 """
+import json
 from app.db import get_pool
 from app.config import settings
 from app.email import client as email_client
@@ -29,7 +30,12 @@ async def send_draft_for_approval(post_id: str) -> None:
         raise ValueError(f"post_history row {post_id} not found")
         
     post_type = row["post_type"]
-    draft_content = dict(row["draft_content"])
+    draft_content_raw = row["draft_content"]
+    if isinstance(draft_content_raw, str):
+        draft_content = json.loads(draft_content_raw)
+    else:
+        draft_content = dict(draft_content_raw)
+        
     customer_email = row["email"]
     chat_id = row["chat_id"]
     
