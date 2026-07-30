@@ -19,7 +19,7 @@ class Settings:
     # Production MUST set this.
     CREDENTIALS_ENCRYPTION_KEY: str = os.environ.get(
         "CREDENTIALS_ENCRYPTION_KEY", 
-        "v-n9yH0v7O3L5Y-P8Q9R-S-T-U-V-W-X-Y-Z-0-1-2-3-4=" 
+        "dzhxUjosRo_kJL-5od8uhrgowOtMWZUyG8NaFUUJOHA=" 
     ).strip()
 
     # Telegram
