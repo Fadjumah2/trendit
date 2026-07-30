@@ -12,6 +12,8 @@ from fastapi import APIRouter, Header, HTTPException
 
 from app.config import settings
 from app.credentials.store import get_credentials
+from app.db import get_pool
+from app.services.generation import generate_post_draft
 
 router = APIRouter(prefix="/internal")
 
@@ -19,6 +21,56 @@ router = APIRouter(prefix="/internal")
 def _check_internal_token(x_internal_token: str) -> None:
     if not settings.INTERNAL_TOKEN or x_internal_token != settings.INTERNAL_TOKEN:
         raise HTTPException(status_code=401, detail="invalid internal token")
+
+
+@router.post("/generate-drafts")
+async def internal_generate_drafts(x_internal_token: str = Header(default="")):
+    """
+    Recurring draft-generation trigger. Meant to be called once every 24
+    hours by an external scheduler (e.g. a GitHub Actions cron workflow)
+    rather than a Render Cron Job, since Cron Jobs aren't available on
+    Render's free instance type.
+
+    For every connected customer/location with a saved content profile
+    that does NOT already have a pending (un-decided) draft, generates a
+    new "standard" post and emails it for approval.
+    """
+    _check_internal_token(x_internal_token)
+
+    pool = get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT DISTINCT gc.customer_id, gc.location_id
+        FROM gbp_credentials gc
+        JOIN business_content_profiles bcp
+          ON bcp.customer_id = gc.customer_id
+         AND bcp.location_id = gc.location_id
+        WHERE NOT EXISTS (
+            SELECT 1 FROM post_history ph
+            WHERE ph.customer_id = gc.customer_id
+              AND ph.location_id = gc.location_id
+              AND ph.owner_decision = 'pending'
+        )
+        """
+    )
+
+    results = []
+    for row in rows:
+        customer_id = str(row["customer_id"])
+        location_id = row["location_id"]
+        try:
+            post_id = await generate_post_draft(customer_id, location_id, "standard")
+            results.append({"customer_id": customer_id, "location_id": location_id, "post_id": post_id, "ok": True})
+        except Exception as e:
+            # One customer's failure shouldn't stop the batch.
+            results.append({"customer_id": customer_id, "location_id": location_id, "error": str(e), "ok": False})
+
+    return {
+        "checked": len(rows),
+        "succeeded": sum(1 for r in results if r["ok"]),
+        "failed": sum(1 for r in results if not r["ok"]),
+        "results": results,
+    }
 
 
 @router.get("/gbp-credentials")
