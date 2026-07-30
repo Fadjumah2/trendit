@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS gbp_credentials (
 );
 
 CREATE INDEX IF NOT EXISTS idx_gbp_credentials_customer ON gbp_credentials(customer_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_gbp_credentials_location_id ON gbp_credentials(location_id);
 
 -- ---------------------------------------------------------------------------
 -- telegram_chat_links: maps a Telegram chat_id to a customer_id after the
