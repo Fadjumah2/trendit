@@ -9,6 +9,7 @@ from app.db import get_pool
 from app.credentials.store import save_credentials
 from app.services.notify import send_connection_confirmation
 from app.services.onboarding import complete_onboarding_process
+from app.services.generation import generate_post_draft
 
 router = APIRouter(prefix="/oauth", tags=["OAuth"])
 
@@ -103,7 +104,7 @@ async def oauth_callback(body: CallbackBody):
     row = await pool.fetchrow(
         """
         INSERT INTO customers (email, business_name)
-        VALUES (, )
+        VALUES ($1, $2)
         ON CONFLICT (email) DO UPDATE SET 
             business_name = COALESCE(EXCLUDED.business_name, customers.business_name),
             updated_at = now()
@@ -142,4 +143,18 @@ async def onboarding_complete(body: OnboardingCompleteBody):
         location_id=body.location_id,
         source_intake=body.answers
     )
+
+    # This is the trigger: once the content profile exists, kick off the
+    # first draft so the owner gets something to approve without any
+    # manual step. Wrapped so a generation hiccup doesn't fail onboarding
+    # itself (the profile is already saved at this point).
+    try:
+        await generate_post_draft(
+            customer_id=body.customer_id,
+            location_id=body.location_id,
+            post_type="standard",
+        )
+    except Exception as e:
+        print(f"First draft generation failed for {body.customer_id}: {e}")
+
     return {"status": "profile_created", "profile": profile}
