@@ -77,26 +77,41 @@ async def oauth_callback(body: CallbackBody):
         location_id = body.location_id
         account_id = None
         if not location_id:
+            print(f"DEBUG: Starting discovery for email {email}")
             # List accounts
             accounts_resp = await client.get(
                 "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
                 headers={"Authorization": f"Bearer {access_token}"}
             )
+            print(f"DEBUG: Accounts API status: {accounts_resp.status_code}")
             if accounts_resp.status_code == 200:
                 accounts = accounts_resp.json().get("accounts", [])
-                if accounts:
-                    account_id = accounts[0]["name"]
-                    # List locations
+                print(f"DEBUG: Found {len(accounts)} accounts")
+                
+                for acc in accounts:
+                    curr_acc_id = acc["name"]
+                    print(f"DEBUG: Checking account: {curr_acc_id} ({acc.get('accountName', 'N/A')})")
+                    
+                    # List locations for this specific account
                     locations_resp = await client.get(
-                        f"https://mybusinessbusinessinformation.googleapis.com/v1/{account_id}/locations?readMask=name,title",
+                        f"https://mybusinessbusinessinformation.googleapis.com/v1/{curr_acc_id}/locations?readMask=name,title",
                         headers={"Authorization": f"Bearer {access_token}"}
                     )
+                    print(f"DEBUG: Locations API status for {curr_acc_id}: {locations_resp.status_code}")
+                    
                     if locations_resp.status_code == 200:
                         locations = locations_resp.json().get("locations", [])
+                        print(f"DEBUG: Found {len(locations)} locations in account {curr_acc_id}")
                         if locations:
                             location_id = locations[0]["name"]
+                            account_id = curr_acc_id
+                            print(f"DEBUG: Selected location_id: {location_id}")
+                            break
+            else:
+                print(f"DEBUG: Accounts API Error: {accounts_resp.text}")
         
         if not location_id:
+            print(f"DEBUG: No locations found across any accounts for {email}")
             location_id = "pending_location_discovery"
 
     # 2. Find-or-create the customer row
