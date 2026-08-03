@@ -33,7 +33,10 @@ class Settings:
 
     # Internal service-to-service auth
     INTERNAL_TOKEN: str = os.environ.get("INTERNAL_TOKEN", "")
-    BACKEND_URL: str = os.environ.get("BACKEND_URL", "http://localhost:8080")
+    BACKEND_URL: str = os.environ.get(
+        "BACKEND_URL", 
+        "https://trendit-4ocu.onrender.com" if os.environ.get("RENDER") else "http://localhost:8080"
+    )
 
     # Gemini / ADK
     GOOGLE_API_KEY: str = os.environ.get("GOOGLE_API_KEY", "")
@@ -44,7 +47,7 @@ class Settings:
     # Verified domain: forms.trendexhub.com
     EMAIL_FROM: str = os.environ.get("EMAIL_FROM", "Trendit <notifications@forms.trendexhub.com>")
 
-    ENV: str = os.environ.get("ENV", "development")
+    ENV: str = os.environ.get("ENV", "production" if os.environ.get("RENDER") else "development")
 
 
 settings = Settings()
