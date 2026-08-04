@@ -11,6 +11,7 @@ from app.telegram.webhook import router as telegram_router
 from app.internal import router as internal_router
 from app.routes.approval import router as approval_router
 from app.routes.oauth import router as oauth_router
+from app.routes.reviews import router as reviews_router
 
 
 @asynccontextmanager
@@ -26,6 +27,7 @@ app.include_router(telegram_router)
 app.include_router(internal_router)
 app.include_router(approval_router)
 app.include_router(oauth_router)
+app.include_router(reviews_router, prefix="/reviews", tags=["reviews"])
 
 
 @app.get("/health")
