@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import httpx
+import asyncio
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Any
@@ -173,24 +174,30 @@ async def oauth_callback(body: CallbackBody):
     # 3b. Ensure a content profile exists (auto-onboarding if no answers provided yet)
     # This allows skipping the pre-connection questions while still having a working agent.
     if location_id != "pending_location_discovery":
-        from app.agent.content_profile import get_content_profile
-        existing_profile = await get_content_profile(customer_id, location_id)
-        if not existing_profile:
-            print(f"DEBUG: Auto-generating baseline profile for {email}")
-            await complete_onboarding_process(customer_id, location_id, {})
-            
-            # Trigger first draft generation
-            try:
-                await generate_post_draft(customer_id, location_id, post_type="standard")
-            except Exception as e:
-                print(f"Auto-draft generation failed: {e}")
+        try:
+            from app.agent.content_profile import get_content_profile
+            existing_profile = await get_content_profile(customer_id, location_id)
+            if not existing_profile:
+                print(f"DEBUG: Auto-generating baseline profile for {email}")
+                # We do NOT await this in the main thread if we want it to be ultra-fast, 
+                # but complete_onboarding_process is already async. 
+                # Let's wrap the whole thing in a background task to be safe against timeouts.
+                async def background_onboarding():
+                    try:
+                        await complete_onboarding_process(customer_id, location_id, {})
+                        # Trigger first draft generation in background
+                        await generate_post_draft(customer_id, location_id, post_type="standard")
+                    except Exception as e:
+                        print(f"DEBUG: Background onboarding/drafting failed: {e}")
+                
+                asyncio.create_task(background_onboarding())
+        except Exception as e:
+            print(f"DEBUG: Failed to check/trigger auto-onboarding: {e}")
 
     # 4. Fire the confirmation (non-blocking so email failure doesn't break the flow)
-    try:
-        await send_connection_confirmation(customer_id, location_id)
-    except Exception as e:
-        print(f"ERROR: Failed to send connection confirmation email: {e}")
+    asyncio.create_task(send_connection_confirmation(customer_id, location_id))
 
+    print(f"DEBUG: OAuth callback successful for {email}. Returning customer_id: {customer_id}")
     return {"customer_id": customer_id, "status": "connected", "location_id": location_id}
 
 class OnboardingCompleteBody(BaseModel):
