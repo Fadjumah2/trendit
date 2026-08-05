@@ -170,6 +170,21 @@ async def oauth_callback(body: CallbackBody):
         scopes=scope,
     )
 
+    # 3b. Ensure a content profile exists (auto-onboarding if no answers provided yet)
+    # This allows skipping the pre-connection questions while still having a working agent.
+    if location_id != "pending_location_discovery":
+        from app.agent.content_profile import get_content_profile
+        existing_profile = await get_content_profile(customer_id, location_id)
+        if not existing_profile:
+            print(f"DEBUG: Auto-generating baseline profile for {email}")
+            await complete_onboarding_process(customer_id, location_id, {})
+            
+            # Trigger first draft generation
+            try:
+                await generate_post_draft(customer_id, location_id, post_type="standard")
+            except Exception as e:
+                print(f"Auto-draft generation failed: {e}")
+
     # 4. Fire the confirmation (non-blocking so email failure doesn't break the flow)
     try:
         await send_connection_confirmation(customer_id, location_id)

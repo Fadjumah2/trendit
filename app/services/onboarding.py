@@ -11,10 +11,7 @@ async def complete_onboarding_process(customer_id: str, location_id: str, source
     1. Distill raw intake into a structured profile using Gemini.
     2. Save the result to business_content_profiles.
     """
-    agent = LlmAgent(
-        model=settings.GEMINI_MODEL,
-        name="onboarding_distiller",
-        instruction="""You are an expert brand strategist for Google Business Profile. 
+    system_instruction = """You are an expert brand strategist for Google Business Profile. 
 Your task is to take raw onboarding answers from a business owner and distill them into a structured profile.
 
 The output MUST be a JSON object with these keys:
@@ -25,6 +22,15 @@ The output MUST be a JSON object with these keys:
 - keywords: a list of 5-10 SEO keywords relevant to their business
 
 Output ONLY the JSON object. No preamble, no markdown formatting."""
+
+    if not source_intake:
+        # Baseline profile generation when no questions were answered
+        system_instruction += "\n\nNOTE: No specific answers were provided. Generate a high-quality baseline profile for a generic small business that can be refined later."
+    
+    agent = LlmAgent(
+        model=settings.GEMINI_MODEL,
+        name="onboarding_distiller",
+        instruction=system_instruction
     )
     
     prompt = f"Raw onboarding intake:\n{json.dumps(source_intake, indent=2)}"
