@@ -13,6 +13,7 @@ from app.routes.approval import router as approval_router
 from app.routes.oauth import router as oauth_router
 from app.routes.reviews import router as reviews_router
 from app.routes.user import router as user_router
+from app.routes.auth import router as auth_router
 
 
 @asynccontextmanager
@@ -30,6 +31,7 @@ app.include_router(approval_router)
 app.include_router(oauth_router)
 app.include_router(reviews_router, prefix="/reviews", tags=["reviews"])
 app.include_router(user_router, prefix="/api/user", tags=["user"])
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 
 
 @app.get("/health")

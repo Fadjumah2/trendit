@@ -5,6 +5,9 @@ httpx>=0.27,<1
 python-dotenv>=1,<2
 pydantic>=2.12,<3
 cryptography>=45,<47
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
 
 # Google ADK — agent orchestration on top of Gemini
 google-adk[extensions]==2.5.0
