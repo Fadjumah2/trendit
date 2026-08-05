@@ -48,6 +48,8 @@ class Settings:
     EMAIL_FROM: str = os.environ.get("EMAIL_FROM", "Trendit <notifications@forms.trendexhub.com>")
 
     ENV: str = os.environ.get("ENV", "production" if os.environ.get("RENDER") else "development")
+    ENABLE_MOCK_MODE: bool = os.environ.get("ENABLE_MOCK_MODE", "true").lower() == "true"
+    TEAM_EMAILS: list[str] = ["eritageentcare@gmail.com", "trendexhub@gmail.com"]
 
 
 settings = Settings()

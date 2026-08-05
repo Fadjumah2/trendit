@@ -76,39 +76,68 @@ async def oauth_callback(body: CallbackBody):
         # 1c. Fetch location_id if missing
         location_id = body.location_id
         account_id = None
+        
+        MOCK_LOCATION_ID = "accounts/mock123/locations/loc456"
+        is_team = email in settings.TEAM_EMAILS
+
         if not location_id:
-            print(f"DEBUG: Starting discovery for email {email}")
-            # List accounts
-            accounts_resp = await client.get(
-                "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
-                headers={"Authorization": f"Bearer {access_token}"}
-            )
-            print(f"DEBUG: Accounts API status: {accounts_resp.status_code}")
-            if accounts_resp.status_code == 200:
-                accounts = accounts_resp.json().get("accounts", [])
-                print(f"DEBUG: Found {len(accounts)} accounts")
-                
-                for acc in accounts:
-                    curr_acc_id = acc["name"]
-                    print(f"DEBUG: Checking account: {curr_acc_id} ({acc.get('accountName', 'N/A')})")
-                    
-                    # List locations for this specific account
-                    locations_resp = await client.get(
-                        f"https://mybusinessbusinessinformation.googleapis.com/v1/{curr_acc_id}/locations?readMask=name,title",
+            # If mock mode is enabled and NOT a team email, go straight to mock
+            if settings.ENABLE_MOCK_MODE and not is_team:
+                print(f"DEBUG: Mock Mode active for {email}. Assigning {MOCK_LOCATION_ID}")
+                location_id = MOCK_LOCATION_ID
+            else:
+                print(f"DEBUG: Starting discovery for email {email}")
+                try:
+                    # List accounts
+                    accounts_resp = await client.get(
+                        "https://mybusinessaccountmanagement.googleapis.com/v1/accounts",
                         headers={"Authorization": f"Bearer {access_token}"}
                     )
-                    print(f"DEBUG: Locations API status for {curr_acc_id}: {locations_resp.status_code}")
+                    print(f"DEBUG: Accounts API status: {accounts_resp.status_code}")
                     
-                    if locations_resp.status_code == 200:
-                        locations = locations_resp.json().get("locations", [])
-                        print(f"DEBUG: Found {len(locations)} locations in account {curr_acc_id}")
-                        if locations:
-                            location_id = locations[0]["name"]
-                            account_id = curr_acc_id
-                            print(f"DEBUG: Selected location_id: {location_id}")
-                            break
-            else:
-                print(f"DEBUG: Accounts API Error: {accounts_resp.text}")
+                    # Handle 429 Resource Exhausted (Quota)
+                    if accounts_resp.status_code == 429:
+                        print(f"DEBUG: Quota exhausted for {email}")
+                        if settings.ENABLE_MOCK_MODE:
+                            print(f"DEBUG: Falling back to Mock Mode for team member {email}")
+                            location_id = MOCK_LOCATION_ID
+                        else:
+                            location_id = "pending_location_discovery"
+                    elif accounts_resp.status_code == 200:
+                        accounts = accounts_resp.json().get("accounts", [])
+                        print(f"DEBUG: Found {len(accounts)} accounts")
+                        
+                        for acc in accounts:
+                            curr_acc_id = acc["name"]
+                            print(f"DEBUG: Checking account: {curr_acc_id} ({acc.get('accountName', 'N/A')})")
+                            
+                            # List locations for this specific account
+                            locations_resp = await client.get(
+                                f"https://mybusinessbusinessinformation.googleapis.com/v1/{curr_acc_id}/locations?readMask=name,title",
+                                headers={"Authorization": f"Bearer {access_token}"}
+                            )
+                            print(f"DEBUG: Locations API status for {curr_acc_id}: {locations_resp.status_code}")
+                            
+                            if locations_resp.status_code == 200:
+                                locations = locations_resp.json().get("locations", [])
+                                print(f"DEBUG: Found {len(locations)} locations in account {curr_acc_id}")
+                                if locations:
+                                    location_id = locations[0]["name"]
+                                    account_id = curr_acc_id
+                                    print(f"DEBUG: Selected location_id: {location_id}")
+                                    break
+                            elif locations_resp.status_code == 429 and settings.ENABLE_MOCK_MODE:
+                                print(f"DEBUG: Quota exhausted during location list for {email}, using mock.")
+                                location_id = MOCK_LOCATION_ID
+                                break
+                    else:
+                        print(f"DEBUG: Accounts API Error: {accounts_resp.text}")
+                        if settings.ENABLE_MOCK_MODE:
+                            location_id = MOCK_LOCATION_ID
+                except Exception as e:
+                    print(f"DEBUG: Discovery exception for {email}: {e}")
+                    if settings.ENABLE_MOCK_MODE:
+                        location_id = MOCK_LOCATION_ID
         
         if not location_id:
             print(f"DEBUG: No locations found across any accounts for {email}")

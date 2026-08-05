@@ -9,10 +9,12 @@ from app.db import get_pool
 
 _MCP_SERVER_DIR = Path(__file__).parents[2] / "mcp_server"
 
-def _get_mcp_params():
+def _get_mcp_params(is_mock: bool = False):
     mcp_env = os.environ.copy()
     mcp_env["NODE_ENV"] = "production"
     mcp_env["TRANSPORT_MODE"] = "stdio"
+    if is_mock:
+        mcp_env["ENABLE_MOCK_MODE"] = "true"
     
     return StdioServerParameters(
         command="node",
@@ -25,15 +27,21 @@ async def list_unreplied_reviews(customer_id: str, location_id: str) -> list:
     """
     Fetch unreplied reviews for a specific location using the MCP server.
     """
-    params = _get_mcp_params()
+    is_mock = location_id.startswith("accounts/mock")
+    params = _get_mcp_params(is_mock=is_mock)
     
+    # Format location name correctly: if it already has accounts/ or locations/ don't prefix
+    location_name = location_id
+    if not (location_name.startswith("locations/") or location_name.startswith("accounts/")):
+        location_name = f"locations/{location_id}"
+
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             result = await session.call_tool(
                 name="get_unreplied_reviews",
                 arguments={
-                    "locationName": f"locations/{location_id}",
+                    "locationName": location_name,
                     "pageSize": 20
                 },
             )
@@ -48,15 +56,20 @@ async def post_review_reply(customer_id: str, location_id: str, review_id: str, 
     """
     Post a reply to a review using the MCP server.
     """
-    params = _get_mcp_params()
+    is_mock = location_id.startswith("accounts/mock")
+    params = _get_mcp_params(is_mock=is_mock)
     
+    location_name = location_id
+    if not (location_name.startswith("locations/") or location_name.startswith("accounts/")):
+        location_name = f"locations/{location_id}"
+
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             result = await session.call_tool(
                 name="post_reply",
                 arguments={
-                    "locationName": f"locations/{location_id}",
+                    "locationName": location_name,
                     "reviewId": review_id,
                     "comment": reply_text
                 },

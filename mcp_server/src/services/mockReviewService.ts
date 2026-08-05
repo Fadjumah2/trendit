@@ -20,11 +20,11 @@ export class MockReviewService implements IReviewService {
     private mockLocations: BusinessLocation[] = [
         {
             name: 'accounts/mock123/locations/loc456',
-            locationName: 'The Great Coffee House',
+            locationName: 'Trendit Bistro',
             primaryPhone: '+1-555-0123',
-            websiteUri: 'https://greatcoffeehouse.com',
+            websiteUri: 'https://trenditbistro.com',
             address: {
-                addressLines: ['123 Main Street'],
+                addressLines: ['123 Trendit Way'],
                 locality: 'San Francisco',
                 administrativeArea: 'CA',
                 postalCode: '94102',
