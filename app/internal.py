@@ -26,14 +26,7 @@ def _check_internal_token(x_internal_token: str) -> None:
 @router.post("/generate-drafts")
 async def internal_generate_drafts(x_internal_token: str = Header(default="")):
     """
-    Recurring draft-generation trigger. Meant to be called once every 24
-    hours by an external scheduler (e.g. a GitHub Actions cron workflow)
-    rather than a Render Cron Job, since Cron Jobs aren't available on
-    Render's free instance type.
-
-    For every connected customer/location with a saved content profile
-    that does NOT already have a pending (un-decided) draft, generates a
-    new "standard" post and emails it for approval.
+    Recurring trigger for both posts and reviews.
     """
     _check_internal_token(x_internal_token)
 
@@ -45,12 +38,6 @@ async def internal_generate_drafts(x_internal_token: str = Header(default="")):
         JOIN business_content_profiles bcp
           ON bcp.customer_id = gc.customer_id
          AND bcp.location_id = gc.location_id
-        WHERE NOT EXISTS (
-            SELECT 1 FROM post_history ph
-            WHERE ph.customer_id = gc.customer_id
-              AND ph.location_id = gc.location_id
-              AND ph.owner_decision = 'pending'
-        )
         """
     )
 
@@ -58,19 +45,34 @@ async def internal_generate_drafts(x_internal_token: str = Header(default="")):
     for row in rows:
         customer_id = str(row["customer_id"])
         location_id = row["location_id"]
+        
+        # 1. Handle Posts
         try:
-            post_id = await generate_post_draft(customer_id, location_id, "standard")
-            results.append({"customer_id": customer_id, "location_id": location_id, "post_id": post_id, "ok": True})
+            # Check if pending draft exists
+            pending = await pool.fetchval(
+                "SELECT 1 FROM post_history WHERE customer_id = $1 AND location_id = $2 AND owner_decision = 'pending'",
+                row["customer_id"], location_id
+            )
+            if not pending:
+                post_id = await generate_post_draft(customer_id, location_id, "standard")
+                results.append({"type": "post", "customer_id": customer_id, "post_id": post_id, "ok": True})
         except Exception as e:
-            # One customer's failure shouldn't stop the batch.
-            results.append({"customer_id": customer_id, "location_id": location_id, "error": str(e), "ok": False})
+            results.append({"type": "post", "customer_id": customer_id, "error": str(e), "ok": False})
+
+        # 2. Handle Reviews
+        try:
+            from app.services.reviews import auto_draft_review_replies
+            reply_ids = await auto_draft_review_replies(customer_id, location_id)
+            if reply_ids:
+                results.append({"type": "reviews", "customer_id": customer_id, "count": len(reply_ids), "ok": True})
+        except Exception as e:
+            results.append({"type": "reviews", "customer_id": customer_id, "error": str(e), "ok": False})
 
     return {
         "checked": len(rows),
-        "succeeded": sum(1 for r in results if r["ok"]),
-        "failed": sum(1 for r in results if not r["ok"]),
         "results": results,
     }
+
 
 
 @router.get("/gbp-credentials")

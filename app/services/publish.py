@@ -60,8 +60,10 @@ async def publish_post(post_id: str) -> dict:
 
     # Pass environment variables to MCP server subprocess
     mcp_env = os.environ.copy()
-    mcp_env["NODE_ENV"] = "development"
+    mcp_env["NODE_ENV"] = "production"
     mcp_env["TRANSPORT_MODE"] = "stdio"
+    if location_id.startswith("accounts/mock"):
+        mcp_env["ENABLE_MOCK_MODE"] = "true"
 
     server_params = StdioServerParameters(
         command="node",
@@ -69,14 +71,22 @@ async def publish_post(post_id: str) -> dict:
         cwd=str(_MCP_SERVER_DIR),
         env=mcp_env
     )
+    
+    location_name = location_id
+    if not (location_name.startswith("locations/") or location_name.startswith("accounts/")):
+        location_name = f"locations/{location_id}"
 
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             result = await session.call_tool(
                 name="create_local_post",
-                arguments=tool_args,
+                arguments={
+                    **tool_args,
+                    "locationName": location_name
+                },
             )
+
 
     gbp_post_id = None
     if hasattr(result, "structuredContent") and result.structuredContent:

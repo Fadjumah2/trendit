@@ -66,6 +66,42 @@ async def send_draft_for_approval(post_id: str) -> None:
             reply_markup=tg_markup
         )
 
+async def send_review_reply_for_approval(reply_id: str) -> None:
+    pool = get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT 
+            rh.reviewer_name, 
+            rh.review_text, 
+            rh.star_rating,
+            rh.draft_reply,
+            c.email
+        FROM review_reply_history rh
+        JOIN customers c ON rh.customer_id = c.customer_id
+        WHERE rh.id = $1
+        """,
+        reply_id,
+    )
+    
+    if row is None:
+        raise ValueError(f"review_reply_history row {reply_id} not found")
+        
+    # 1. Email Notification
+    subject, html_body = email_templates.review_reply_preview_email(
+        reply_id=reply_id,
+        reviewer_name=row["reviewer_name"],
+        review_text=row["review_text"],
+        star_rating=row["star_rating"],
+        draft_reply=row["draft_reply"],
+        backend_url=settings.BACKEND_URL
+    )
+    
+    await email_client.send_email(
+        to=row["email"],
+        subject=subject,
+        html=html_body
+    )
+
 async def send_connection_confirmation(customer_id: str, location_id: str) -> None:
     pool = get_pool()
     row = await pool.fetchrow(
