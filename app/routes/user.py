@@ -32,20 +32,23 @@ async def get_user_profile(customer_id: str):
         
     # Check onboarding status by seeing if a profile exists
     profile_row = await pool.fetchrow(
-        "SELECT 1 FROM business_content_profiles WHERE customer_id = $1",
+        "SELECT profile_json FROM business_content_profiles WHERE customer_id = $1",
         customer_id
     )
     
     status = "initializing"
+    profile_data = None
     if profile_row:
         status = "complete"
+        profile_data = profile_row["profile_json"]
     elif row["location_id"] == "pending_location_discovery":
         status = "pending_discovery"
         
     return {
         "customer_id": customer_id,
         "email": row["email"],
-        "business_name": row["business_name"],
+        "business_name": row["business_name"] or "Unknown Business",
         "location_id": row["location_id"],
-        "onboarding_status": status
+        "onboarding_status": status,
+        "profile": profile_data
     }

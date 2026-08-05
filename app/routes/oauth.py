@@ -76,9 +76,11 @@ async def oauth_callback(body: CallbackBody):
 
         # 1c. Fetch location_id if missing
         location_id = body.location_id
+        business_name = body.businessName
         account_id = None
         
         MOCK_LOCATION_ID = "accounts/mock123/locations/loc456"
+        MOCK_BUSINESS_NAME = "Trendit Bistro"
         is_team = email in settings.TEAM_EMAILS
 
         if not location_id:
@@ -86,6 +88,7 @@ async def oauth_callback(body: CallbackBody):
             if settings.ENABLE_MOCK_MODE and not is_team:
                 print(f"DEBUG: Mock Mode active for {email}. Assigning {MOCK_LOCATION_ID}")
                 location_id = MOCK_LOCATION_ID
+                business_name = MOCK_BUSINESS_NAME
             else:
                 print(f"DEBUG: Starting discovery for email {email}")
                 try:
@@ -102,6 +105,7 @@ async def oauth_callback(body: CallbackBody):
                         if settings.ENABLE_MOCK_MODE:
                             print(f"DEBUG: Falling back to Mock Mode for team member {email}")
                             location_id = MOCK_LOCATION_ID
+                            business_name = MOCK_BUSINESS_NAME
                         else:
                             location_id = "pending_location_discovery"
                     elif accounts_resp.status_code == 200:
@@ -124,25 +128,36 @@ async def oauth_callback(body: CallbackBody):
                                 print(f"DEBUG: Found {len(locations)} locations in account {curr_acc_id}")
                                 if locations:
                                     location_id = locations[0]["name"]
+                                    business_name = locations[0].get("title")
                                     account_id = curr_acc_id
-                                    print(f"DEBUG: Selected location_id: {location_id}")
+                                    print(f"DEBUG: Selected location_id: {location_id}, name: {business_name}")
                                     break
                             elif locations_resp.status_code == 429 and settings.ENABLE_MOCK_MODE:
                                 print(f"DEBUG: Quota exhausted during location list for {email}, using mock.")
                                 location_id = MOCK_LOCATION_ID
+                                business_name = MOCK_BUSINESS_NAME
                                 break
                     else:
                         print(f"DEBUG: Accounts API Error: {accounts_resp.text}")
                         if settings.ENABLE_MOCK_MODE:
                             location_id = MOCK_LOCATION_ID
+                            business_name = MOCK_BUSINESS_NAME
                 except Exception as e:
                     print(f"DEBUG: Discovery exception for {email}: {e}")
                     if settings.ENABLE_MOCK_MODE:
                         location_id = MOCK_LOCATION_ID
+                        business_name = MOCK_BUSINESS_NAME
         
         if not location_id:
             print(f"DEBUG: No locations found across any accounts for {email}")
             location_id = "pending_location_discovery"
+
+        # Update business name if we found one
+        if business_name:
+            await pool.execute(
+                "UPDATE customers SET business_name = $1 WHERE customer_id = $2",
+                business_name, customer_id
+            )
 
     # 2. Find-or-create the customer row
     pool = get_pool()
