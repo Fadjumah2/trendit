@@ -56,12 +56,15 @@ def build_agent(post_type: str, content_profile: dict, few_shot_posts: list[dict
 def get_mcp_server_params():
     # Pass necessary env vars to the MCP subprocess
     mcp_env = os.environ.copy()
-    mcp_env["NODE_ENV"] = "development"
+    mcp_env["NODE_ENV"] = "production"
     mcp_env["TRANSPORT_MODE"] = "stdio"
+    
+    # Use absolute path for robustness in Docker/Render
+    mcp_dir = Path(__file__).parents[2] / "mcp_server"
     
     return StdioServerParameters(
         command="node",
         args=["build/index.js"],
-        cwd="./mcp_server",
+        cwd=str(mcp_dir),
         env=mcp_env
     )
