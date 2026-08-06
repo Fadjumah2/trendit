@@ -88,3 +88,4 @@ async def login(credentials: UserLogin):
         "email": row["email"],
         "username": row["username"]
     }
+
