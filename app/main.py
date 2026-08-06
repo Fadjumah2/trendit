@@ -43,6 +43,16 @@ app.include_router(user_router, prefix="/api/user", tags=["user"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 
 
+@app.get("/debug/version")
+async def debug_version():
+    import google.adk
+    import mcp
+    return {
+        "google-adk": getattr(google.adk, "__version__", "unknown"),
+        "mcp": getattr(mcp, "__version__", "unknown")
+    }
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
