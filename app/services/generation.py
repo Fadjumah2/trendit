@@ -21,12 +21,10 @@ async def generate_post_draft(customer_id: str, location_id: str, post_type: str
     if not profile:
         raise ValueError(f"No content profile found for customer {customer_id}")
     few_shots = await get_recent_approved_posts(customer_id, location_id)
-    async with AsyncExitStack() as stack:
-        toolset = MCPToolset(
-            connection_params=get_mcp_server_params(),
-            exit_stack=stack
-        )
-        await stack.enter_async_context(toolset)
+    
+    async with MCPToolset(
+        connection_params=get_mcp_server_params()
+    ) as toolset:
         all_tools = await toolset.load_tools()
         filtered_tools = [t for t in all_tools if t.name in V1_ALLOWED_TOOLS]
         agent = build_agent(post_type, profile, few_shots, tools=filtered_tools)
@@ -53,6 +51,7 @@ async def generate_post_draft(customer_id: str, location_id: str, post_type: str
             draft_content = json.loads(content_text)
         except Exception as e:
             raise RuntimeError(f"Failed to parse agent response as JSON: {content_text}") from e
+    
     val_result = validate_post(post_type, draft_content)
     post_id = await create_draft(customer_id=customer_id, location_id=location_id, post_type=post_type, draft_content=draft_content)
     await save_validator_result(post_id=post_id, validator_result={"passed": val_result.passed, "errors": val_result.errors, "auto_fixed_fields": val_result.auto_fixed_fields}, fixed_content=val_result.fixed_content)
