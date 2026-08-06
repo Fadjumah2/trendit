@@ -12,7 +12,29 @@ from app.services.notify import send_connection_confirmation
 from app.services.onboarding import complete_onboarding_process
 from app.services.generation import generate_post_draft
 
+from fastapi.responses import RedirectResponse
+import urllib.parse
+
 router = APIRouter(prefix="/oauth", tags=["OAuth"])
+
+@router.get("/google")
+async def google_login(state: str | None = None):
+    """
+    Initial redirect to Google OAuth.
+    """
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": f"{settings.FRONTEND_URL}/auth/callback",
+        "response_type": "code",
+        "scope": "openid email profile https://www.googleapis.com/auth/business.manage",
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    if state:
+        params["state"] = state
+        
+    url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    return RedirectResponse(url)
 
 class CallbackBody(BaseModel):
     code: str | None = None
@@ -35,7 +57,7 @@ async def oauth_callback(body: CallbackBody):
     async with httpx.AsyncClient() as client:
         # 1. Exchange code if tokens not provided
         if body.code and not access_token:
-            redirect_uri = body.redirect_uri or f"{settings.BACKEND_URL}/auth/callback"
+            redirect_uri = body.redirect_uri or f"{settings.FRONTEND_URL}/auth/callback"
             resp = await client.post(
                 "https://oauth2.googleapis.com/token",
                 data={

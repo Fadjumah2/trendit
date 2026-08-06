@@ -20,15 +20,26 @@ class UserLogin(BaseModel):
 async def register(user: UserRegister):
     pool = get_pool()
     
-    # Check if user or email already exists
-    existing = await pool.fetchrow(
-        "SELECT customer_id FROM customers WHERE email = $1 OR username = $2",
-        user.email, user.username
+    # Check if username is taken by someone else
+    existing_username = await pool.fetchrow(
+        "SELECT email FROM customers WHERE username = $1 AND email != $2",
+        user.username, user.email
     )
-    if existing:
+    if existing_username:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username or email already registered"
+            detail="Username already taken"
+        )
+    
+    # Check if email already has a password (only if they aren't trying to overwrite their own)
+    existing_pwd = await pool.fetchval(
+        "SELECT password_hash FROM customers WHERE email = $1",
+        user.email
+    )
+    if existing_pwd:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account already has a password. Please log in."
         )
     
     hashed_pwd = get_password_hash(user.password)
@@ -38,6 +49,10 @@ async def register(user: UserRegister):
             """
             INSERT INTO customers (email, username, password_hash)
             VALUES ($1, $2, $3)
+            ON CONFLICT (email) DO UPDATE SET
+                username = COALESCE(EXCLUDED.username, customers.username),
+                password_hash = COALESCE(EXCLUDED.password_hash, customers.password_hash),
+                updated_at = now()
             RETURNING customer_id
             """,
             user.email, user.username, hashed_pwd

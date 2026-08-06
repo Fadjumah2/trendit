@@ -37,6 +37,10 @@ class Settings:
         "BACKEND_URL", 
         "https://trendit-4ocu.onrender.com" if os.environ.get("RENDER") else "http://localhost:8080"
     )
+    FRONTEND_URL: str = os.environ.get(
+        "FRONTEND_URL",
+        "https://trenitw.onrender.com" if os.environ.get("RENDER") else "http://localhost:3000"
+    )
 
     # Authentication
     JWT_SECRET_KEY: str = os.environ.get("JWT_SECRET_KEY", "77eb87b6e92f44c4b9e8712f5a6b0c1e8d9f0a1b2c3d4e5f6g7h8i9j0k1l2m3n")

@@ -30,6 +30,7 @@ async def internal_generate_drafts(x_internal_token: str = Header(default="")):
     """
     _check_internal_token(x_internal_token)
 
+    print(f"DEBUG: Internal trigger started. Checking users...")
     pool = get_pool()
     rows = await pool.fetch(
         """
@@ -40,6 +41,19 @@ async def internal_generate_drafts(x_internal_token: str = Header(default="")):
          AND bcp.location_id = gc.location_id
         """
     )
+    print(f"DEBUG: Found {len(rows)} matching user/location pairs for drafting.")
+    
+    # If 0 found, let's log why (mismatches)
+    if len(rows) == 0:
+        mismatches = await pool.fetch("""
+            SELECT gc.customer_id, gc.location_id as cred_loc, bcp.location_id as prof_loc
+            FROM gbp_credentials gc
+            JOIN business_content_profiles bcp ON bcp.customer_id = gc.customer_id
+            WHERE gc.location_id != bcp.location_id
+        """)
+        for m in mismatches:
+            print(f"DEBUG: Mismatch for user {m['customer_id']}: Creds have {m['cred_loc']}, Profile has {m['prof_loc']}")
+
 
     results = []
     for row in rows:
