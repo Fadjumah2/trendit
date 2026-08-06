@@ -38,6 +38,9 @@ class Settings:
         "https://trendit-4ocu.onrender.com" if os.environ.get("RENDER") else "http://localhost:8080"
     )
 
+    # Authentication
+    JWT_SECRET_KEY: str = os.environ.get("JWT_SECRET_KEY", "77eb87b6e92f44c4b9e8712f5a6b0c1e8d9f0a1b2c3d4e5f6g7h8i9j0k1l2m3n")
+
     # Gemini / ADK
     GOOGLE_API_KEY: str = os.environ.get("GOOGLE_API_KEY", "")
     GEMINI_MODEL: str = os.environ.get("AGENT_MODEL", "gemini-2.0-flash")

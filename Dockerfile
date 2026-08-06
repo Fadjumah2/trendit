@@ -2,11 +2,16 @@
 # (the forked MCP server, spawned as a stdio subprocess) in one container.
 FROM python:3.11-slim
 
-# --- Node.js (for mcp_server/, a TypeScript project) ---
-RUN apt-get update && apt-get install -y curl gnupg \
+# --- Node.js and build tools ---
+RUN apt-get update && apt-get install -y \
+    curl \
+    gnupg \
+    build-essential \
+    libffi-dev \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /app
 
