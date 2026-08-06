@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr
 from app.db import get_pool
 from app.auth_utils import get_password_hash, verify_password, create_access_token
 import uuid
+import logging
 
 router = APIRouter()
 
@@ -53,7 +54,7 @@ async def register(user: UserRegister):
             "username": user.username
         }
     except Exception as e:
-        print(f"Registration error: {e}")
+        logging.exception(f"Registration error: {e}")
         raise HTTPException(status_code=500, detail="Failed to create account")
 
 @router.post("/login")
