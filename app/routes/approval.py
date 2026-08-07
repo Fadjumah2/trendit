@@ -51,6 +51,9 @@ async def reject_post(post_id: str):
     if owner_decision != "pending":
         return HTMLResponse(content=decision_result_page(f"This draft was already {owner_decision}."))
 
+    await mark_skipped(post_id)
+    return HTMLResponse(content=decision_result_page("Draft rejected. No post was published."))
+
 @router.get("/approve-review/{reply_id}", response_class=HTMLResponse)
 async def approve_review_reply(reply_id: str):
     pool = get_pool()
