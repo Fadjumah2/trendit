@@ -98,7 +98,7 @@ async def oauth_callback(body: CallbackBody):
 
         # 1c. Fetch location_id if missing
         location_id = body.location_id
-        business_name = body.businessName
+        business_name = body.business_name
         account_id = None
         
         MOCK_LOCATION_ID = "accounts/mock123/locations/loc456"
@@ -174,14 +174,10 @@ async def oauth_callback(body: CallbackBody):
             print(f"DEBUG: No locations found across any accounts for {email}")
             location_id = "pending_location_discovery"
 
-        # Update business name if we found one
-        if business_name:
-            await pool.execute(
-                "UPDATE customers SET business_name = $1 WHERE customer_id = $2",
-                business_name, customer_id
-            )
-
     # 2. Find-or-create the customer row
+    # Use the resolved `business_name` (from the request body, mock mode, or
+    # real GBP discovery above) rather than only `body.business_name`, so a
+    # name discovered via Google actually gets persisted on first connect.
     pool = get_pool()
     row = await pool.fetchrow(
         """
@@ -193,7 +189,7 @@ async def oauth_callback(body: CallbackBody):
         RETURNING customer_id
         """,
         email,
-        body.business_name,
+        business_name,
     )
     customer_id = str(row["customer_id"])
 
