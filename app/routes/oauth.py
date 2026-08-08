@@ -246,20 +246,7 @@ async def onboarding_complete(body: OnboardingCompleteBody):
         source_intake=body.answers
     )
 
-    # This is the trigger: once the content profile exists, kick off the
-    # first draft so the owner gets something to approve without any
-    # manual step. Wrapped so a generation hiccup doesn't fail onboarding
-    # itself (the profile is already saved at this point).
-    if body.location_id != "pending_location_discovery":
-        try:
-            await generate_post_draft(
-                customer_id=body.customer_id,
-                location_id=body.location_id,
-                post_type="standard",
-            )
-        except Exception as e:
-            print(f"First draft generation failed for {body.customer_id}: {e}")
-    else:
-        print(f"Skipping first draft generation for {body.customer_id} as location is pending discovery.")
-
+    # NOTE: Onboarding completion used to auto-trigger a first draft. 
+    # This has been decoupled; generation is now exclusively user-initiated 
+    # via the dashboard or scheduled via the publish cron.
     return {"status": "profile_created", "profile": profile}

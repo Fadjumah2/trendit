@@ -28,9 +28,12 @@ async def approve_post(post_id: str):
 
     await mark_approved(post_id)
     try:
+        # NOTE: In the redefined workflow, approval will only set status='approved' 
+        # and queue the post for the next scheduled publish window (6:00 AM daily).
+        # Immediate publishing is retired.
         result = await publish_post(post_id)
         gbp_post_id = result.get("gbp_post_id", "published")
-        return HTMLResponse(content=decision_result_page(f"Approved and published! Reference: {gbp_post_id}"))
+        return HTMLResponse(content=decision_result_page(f"Approved and queued for publish! Reference: {gbp_post_id}"))
     except Exception as e:
         # If publish fails, we already marked it approved in our DB. 
         # In a real app, we might want to handle retries or a "failed" state.

@@ -90,3 +90,29 @@ path changes.
    server and confirm each returns *that* customer's posts — the original
    single-file bug (customer B's connect overwriting customer A's tokens)
    is the thing this fork exists to fix.
+
+---
+
+## Trendit Workflow Overview (August 2026 Redefinition)
+
+```
+Connect → (location picker if needed) → Onboarding → [anytime] Generate Draft 
+  → Approve (site or email) → queued → 6:00 AM daily cron → Published
+```
+
+The end-to-end workflow has been refined to provide more control to the business owner:
+
+1.  **Connect Flow**: 
+    *   OAuth callback includes a **location-listing** step.
+    *   If multiple locations are found, the user selects one via a **location picker**.
+2.  **Onboarding**: 
+    *   Builds the business content profile via Gemini.
+    *   **Manual Trigger**: Onboarding completion no longer auto-fires generation.
+3.  **Draft Generation**: 
+    *   User-initiated via a "Generate Draft" button on the dashboard.
+    *   Agent uses live profile data for **Suggestions** on-demand.
+4.  **Approval Layer**: 
+    *   Approving (via site or email) sets status to `approved`.
+    *   **Queued**: Approval no longer instantly publishes.
+5.  **Scheduled Publish**: 
+    *   A daily cron at **6:00 AM** sweeps all `approved` posts and publishes them to GBP.

@@ -10,6 +10,11 @@ from app.telegram import client as tg_client
 from app.telegram import templates as tg_templates
 
 async def send_draft_for_approval(post_id: str) -> None:
+    """
+    Sends a draft preview to the owner for approval.
+    NOTE: Approval (via website or email) now queues the post for the 
+    scheduled daily publish window (6:00 AM) rather than publishing instantly.
+    """
     pool = get_pool()
     row = await pool.fetchrow(
         """
